@@ -8,12 +8,11 @@ from database import SessionLocal, engine
 import models
 import ia_service
 
-# Força a criação das tabelas na nuvem (Supabase) ou no local
+# Força a criação das tabelas
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="SaaSIA - Premium Terminal")
 
-# Permite que o Frontend converse com o Backend sem bloqueios
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,10 +28,8 @@ def get_db():
     finally:
         db.close()
 
-# Rota Principal para entregar a interface
 @app.get("/", response_class=HTMLResponse)
 def carregar_plataforma():
-    """ Entrega o ficheiro index.html diretamente pelo Python """
     return FileResponse("index.html")
 
 @app.post("/criar-conta")
@@ -71,14 +68,19 @@ def analisar_mercado_ia(usuario_id: int, db: Session = Depends(get_db)):
 
         for noticia in noticias:
             analise = ia_service.analisar_texto_com_ia(noticia.title)
-            db.add(models.HistoricoInvestimento(titulo_noticia=noticia.title, recomendacao=analise["mensagem"]))
+            
+            # Formata a string para caber no banco de dados existente sem quebrar a tabela
+            resumo_db = f"{analise['decisao']} | {analise['mensagem']}"
+            db.add(models.HistoricoInvestimento(titulo_noticia=noticia.title, recomendacao=resumo_db))
             
             if analise["decisao"] != "AGUARDAR":
                 recomendacoes.append({
                     "ativo": analise["ativo"],
                     "decisao": analise["decisao"],
                     "motivo": analise["mensagem"],
-                    "noticia_base": noticia.title
+                    "noticia_base": noticia.title,
+                    "retorno_esperado": analise["retorno_esperado"],
+                    "tempo_retorno": analise["tempo_retorno"]
                 })
 
         db.commit()
@@ -93,7 +95,7 @@ def executar_ordem(usuario_id: int, ativo: str, acao: str, db: Session = Depends
         if not carteira:
             raise HTTPException(status_code=404, detail="Carteira não encontrada.")
         
-        precos_mercado = {"PETR4": 38.50, "BTC": 350000.00, "IBOVESPA": 125000.00}
+        precos_mercado = {"PETR4": 38.50, "BTC": 350000.00, "IBOVESPA": 125000.00, "MGLU3": 15.30, "ITUB4": 33.20}
         custo_ativo = precos_mercado.get(ativo, 100.00) 
         
         if acao == "COMPRAR":
@@ -108,14 +110,14 @@ def executar_ordem(usuario_id: int, ativo: str, acao: str, db: Session = Depends
                 preco_compra=custo_ativo
             )
             db.add(novo_ativo)
-            mensagem = f"Ordem de COMPRA executada! {ativo} adicionado."
+            mensagem = f"Ordem executada! {ativo} adicionado."
             
         elif acao == "VENDER":
             ativo_existente = db.query(models.AtivoComprado).filter(models.AtivoComprado.usuario_id == usuario_id, models.AtivoComprado.simbolo_ativo == ativo).first()
             if not ativo_existente:
                  raise HTTPException(status_code=400, detail="Ativo não encontrado na sua carteira.")
             
-            lucro_simulado = ativo_existente.preco_compra * 1.03 
+            lucro_simulado = ativo_existente.preco_compra * 1.05 
             carteira.saldo_disponivel += lucro_simulado
             db.delete(ativo_existente)
             mensagem = f"Ordem de VENDA executada com lucro!"
@@ -132,7 +134,10 @@ def obter_dados_painel(usuario_id: int = 1, db: Session = Depends(get_db)):
         usuario = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
         carteira = db.query(models.CarteiraVirtual).filter(models.CarteiraVirtual.usuario_id == usuario_id).first()
         ativos = db.query(models.AtivoComprado).filter(models.AtivoComprado.usuario_id == usuario_id).all()
-        historico = db.query(models.HistoricoInvestimento).order_by(models.HistoricoInvestimento.id.desc()).limit(6).all()
+        
+        # O backend vai buscar as notícias em TEMPO REAL sempre que o painel abrir
+        noticias_ao_vivo = ia_service.buscar_noticias_globais()
+        lista_noticias = [{"titulo": n.title, "link": n.link} for n in noticias_ao_vivo]
 
         indicadores = {
             "cripto": [
@@ -153,7 +158,7 @@ def obter_dados_painel(usuario_id: int = 1, db: Session = Depends(get_db)):
             "nome_usuario": usuario.nome if usuario else "Investidor VIP",
             "saldo": carteira.saldo_disponivel if carteira else 0.0,
             "ativos": [{"simbolo": a.simbolo_ativo, "valor": a.preco_compra} for a in ativos],
-            "radar": [{"titulo": h.titulo_noticia, "recomendacao": h.recomendacao} for h in historico],
+            "feed_ao_vivo": lista_noticias,
             "indicadores": indicadores
         }
     except Exception as e:

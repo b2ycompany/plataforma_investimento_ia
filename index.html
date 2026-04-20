@@ -33,12 +33,12 @@
     <div id="splash-screen">
         <div class="loader-ring mb-6"></div>
         <h1 class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-blue-600 tracking-tighter">SaaSIA</h1>
-        <p class="text-slate-400 mt-2 text-sm tracking-widest uppercase">Inicializando Motor de IA e Mercado...</p>
+        <p class="text-slate-400 mt-2 text-sm tracking-widest uppercase">Carregando Mercado Global...</p>
     </div>
 
     <div class="bg-sky-900/20 border-b border-sky-900/30 py-2 text-xs font-semibold ticker-wrapper text-sky-400">
         <div class="ticker-content space-x-8" id="topoTicker">
-            Carregando indicadores da B3 e Cripto...
+            Sincronizando com a B3...
         </div>
     </div>
 
@@ -47,7 +47,7 @@
             <h1 class="text-2xl font-black text-white text-glow">SaaSIA<span class="text-sky-500 font-light ml-1">PRO</span></h1>
             <div class="flex items-center space-x-6">
                 <div class="text-right">
-                    <p class="text-xs text-slate-400 uppercase tracking-wider">Bem-vindo,</p>
+                    <p class="text-xs text-slate-400 uppercase tracking-wider">Investidor,</p>
                     <p id="nomeUsuario" class="font-bold text-white">---</p>
                 </div>
                 <div class="h-10 w-10 rounded-full bg-gradient-to-tr from-sky-500 to-blue-700 flex items-center justify-center text-white font-bold shadow-[0_0_15px_rgba(56,189,248,0.4)]">
@@ -86,18 +86,18 @@
             <div class="glass p-8 rounded-2xl border border-sky-500/30 relative overflow-hidden text-center">
                 <div class="absolute inset-0 bg-gradient-to-b from-sky-500/10 to-transparent pointer-events-none"></div>
                 <h2 class="text-2xl font-black mb-2">Motor Analítico de IA</h2>
-                <p class="text-slate-400 text-sm mb-8">A nossa inteligência lê as principais notícias do G1/UOL e cruza com os indicadores para sugerir as melhores entradas.</p>
+                <p class="text-slate-400 text-sm mb-8">Nossa inteligência lê o painel de notícias ao lado em tempo real e calcula o Retorno Esperado (ROI) para sugerir entradas seguras.</p>
                 
                 <button type="button" onclick="event.preventDefault(); solicitarAnalise()" id="btnIA" class="bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-[0_0_20px_rgba(56,189,248,0.3)] hover:shadow-[0_0_30px_rgba(56,189,248,0.6)] transition-all transform hover:-translate-y-1">
-                    Processar Mercado Agora
+                    Avaliar Investimentos Agora
                 </button>
             </div>
 
             <div>
-                <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4 ml-2">Oportunidades Encontradas (IA)</h3>
+                <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4 ml-2">Oportunidades de Ouro (Mapeadas pela IA)</h3>
                 <div id="painelSugestoes" class="grid grid-cols-1 gap-4">
                     <div class="glass p-6 rounded-xl text-center text-slate-500 text-sm border border-dashed border-slate-700">
-                        Pressione "Processar Mercado" para gerar insights em tempo real.
+                        Clique em "Avaliar Investimentos Agora" para projetar seus lucros.
                     </div>
                 </div>
             </div>
@@ -105,17 +105,17 @@
 
         <div class="lg:col-span-1 glass p-6 rounded-2xl flex flex-col h-full">
             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest">Radar de Notícias (BR)</h3>
+                <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest">Live News (G1/UOL)</h3>
                 <span class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span>
             </div>
             <div class="overflow-y-auto flex-1 pr-2 space-y-4" style="max-height: 600px;" id="listaRadar">
+                <p class="text-sm text-slate-500 text-center mt-10">Carregando feed...</p>
             </div>
         </div>
 
     </main>
 
     <script>
-        // MUDANÇA CRUCIAL: Deixamos a variável vazia para que ela use o domínio da Vercel automaticamente
         const API_URL = ""; 
         const USUARIO_ID = 1;
 
@@ -124,7 +124,7 @@
                 document.getElementById('splash-screen').style.opacity = '0';
                 setTimeout(() => document.getElementById('splash-screen').style.visibility = 'hidden', 800);
                 atualizarPainel();
-            }, 1500); 
+            }, 1000); 
         });
 
         async function atualizarPainel() {
@@ -168,19 +168,24 @@
                     });
                 }
 
+                // Novidade: Carrega as notícias em Tempo Real na hora que a página abre!
                 const listaRadar = document.getElementById('listaRadar');
                 listaRadar.innerHTML = '';
-                data.radar.forEach(item => {
-                    listaRadar.innerHTML += `
-                        <div class="bg-slate-800/30 p-4 rounded-xl border border-slate-700/50 hover:bg-slate-800/70 transition-colors">
-                            <p class="text-slate-200 text-sm font-medium leading-relaxed mb-2">${item.titulo}</p>
-                            <span class="text-[10px] font-bold uppercase px-2 py-1 bg-slate-900 rounded text-slate-400">Análise IA: ${item.recomendacao}</span>
-                        </div>
-                    `;
-                });
+                if (data.feed_ao_vivo.length === 0) {
+                    listaRadar.innerHTML = '<p class="text-sm text-slate-500">Sem notícias no momento.</p>';
+                } else {
+                    data.feed_ao_vivo.forEach(item => {
+                        listaRadar.innerHTML += `
+                            <div class="bg-slate-800/30 p-4 rounded-xl border border-slate-700/50 hover:bg-slate-800/70 transition-colors">
+                                <p class="text-slate-200 text-sm font-medium leading-relaxed mb-2">${item.titulo}</p>
+                                <span class="text-[10px] font-bold uppercase px-2 py-1 bg-blue-900/50 text-blue-400 rounded">Ao Vivo</span>
+                            </div>
+                        `;
+                    });
+                }
 
             } catch (error) {
-                console.error("Erro:", error);
+                console.error("Erro ao carregar o painel:", error);
             }
         }
 
@@ -212,9 +217,9 @@
             const btn = document.getElementById('btnIA');
             const painel = document.getElementById('painelSugestoes');
             
-            btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></div> Analisando...`;
+            btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></div> Processando Milhões de Dados...`;
             btn.classList.add("opacity-70", "cursor-wait");
-            painel.innerHTML = `<div class="text-center text-sky-400 animate-pulse py-8">Lendo notícias do mercado brasileiro...</div>`;
+            painel.innerHTML = `<div class="text-center text-sky-400 animate-pulse py-8">Analisando impacto, lucro projetado e risco...</div>`;
             
             try {
                 const res = await fetch(`${API_URL}/solicitar-analise-ia?usuario_id=${USUARIO_ID}`, { method: 'POST' });
@@ -222,36 +227,45 @@
                 
                 painel.innerHTML = '';
                 if(data.sugestoes.length === 0) {
-                    painel.innerHTML = `<div class="glass p-6 rounded-xl text-center text-yellow-400 border border-yellow-500/30">O mercado está lateralizado. Nenhuma oportunidade clara agora.</div>`;
+                    painel.innerHTML = `<div class="glass p-6 rounded-xl text-center text-yellow-400 border border-yellow-500/30">O mercado apresenta alto risco hoje. Nenhuma oportunidade segura encontrada. Mantenha o capital.</div>`;
                 } else {
                     data.sugestoes.forEach(sug => {
                         let corBorder = sug.decisao === 'COMPRAR' ? 'border-green-500/50' : 'border-red-500/50';
                         let corText = sug.decisao === 'COMPRAR' ? 'text-green-400' : 'text-red-400';
                         
                         painel.innerHTML += `
-                            <div class="glass p-5 rounded-xl border ${corBorder} flex flex-col md:flex-row items-center justify-between gap-4">
-                                <div>
-                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-900 px-2 py-1 rounded">Sugestão de Ativo</span>
-                                    <h4 class="text-xl font-black text-white mt-1">${sug.ativo}</h4>
-                                    <p class="text-xs text-slate-400 mt-1 max-w-sm">Baseado em: "${sug.noticia_base}"</p>
+                            <div class="glass p-5 rounded-xl border ${corBorder} flex flex-col items-start gap-4">
+                                <div class="flex justify-between w-full items-start">
+                                    <div>
+                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-900 px-2 py-1 rounded mr-2">Ativo Recomendado</span>
+                                        <span class="text-[10px] font-bold ${corText} uppercase tracking-widest bg-slate-900 px-2 py-1 rounded">Ordem: ${sug.decisao}</span>
+                                        <h4 class="text-2xl font-black text-white mt-2">${sug.ativo}</h4>
+                                        <p class="text-xs text-slate-400 mt-1 max-w-lg italic">Motivo IA: "${sug.motivo}"</p>
+                                    </div>
+                                    <button type="button" onclick="event.preventDefault(); executarOrdem('${sug.ativo}', '${sug.decisao}')" class="bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 text-white px-6 py-3 rounded-lg font-bold text-sm shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] transition-all">
+                                        Executar Investimento
+                                    </button>
                                 </div>
-                                <div class="text-center md:text-right">
-                                    <div class="text-lg font-black ${corText}">${sug.decisao}</div>
-                                    <p class="text-[11px] text-slate-500 mt-1">${sug.motivo}</p>
+                                
+                                <div class="w-full grid grid-cols-2 gap-4 mt-2 border-t border-slate-700/50 pt-4">
+                                    <div>
+                                        <p class="text-[10px] text-slate-500 uppercase font-bold">Retorno Esperado (ROI)</p>
+                                        <p class="text-lg font-black text-green-400">${sug.retorno_esperado}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-slate-500 uppercase font-bold">Horizonte de Tempo</p>
+                                        <p class="text-lg font-black text-sky-400">${sug.tempo_retorno}</p>
+                                    </div>
                                 </div>
-                                <button type="button" onclick="event.preventDefault(); executarOrdem('${sug.ativo}', '${sug.decisao}')" class="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-lg font-bold text-sm border border-slate-600 transition-colors shadow-lg">
-                                    Executar Ordem
-                                </button>
                             </div>
                         `;
                     });
                 }
-                atualizarPainel(); 
             } catch (error) {
-                painel.innerHTML = `<div class="text-red-400">Falha ao conectar com o motor de IA.</div>`;
+                painel.innerHTML = `<div class="text-red-400">Falha ao conectar com o motor financeiro de IA.</div>`;
             }
             
-            btn.innerHTML = `Processar Mercado Agora`;
+            btn.innerHTML = `Avaliar Investimentos Agora`;
             btn.classList.remove("opacity-70", "cursor-wait");
         }
     </script>
