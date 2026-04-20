@@ -1,0 +1,5 @@
+# Ignorar arquivos de ambiente e banco de dados local
+.env
+*.db
+plataforma_ia.db
+__pycache__/
