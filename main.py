@@ -30,12 +30,18 @@ def get_db():
         db.close()
 
 def obter_precos_binance():
+    # Tenta buscar os top 4 criptoativos para dar o "Efeito Binance"
     try:
-        btc_res = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT", timeout=3).json()
-        eth_res = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT", timeout=3).json()
+        btc = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT", timeout=3).json()
+        eth = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT", timeout=3).json()
+        sol = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT", timeout=3).json()
+        bnb = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT", timeout=3).json()
+        
         return [
-            {"simbolo": "BTC/USD", "valor": float(btc_res["price"]), "variacao": "AO VIVO"},
-            {"simbolo": "ETH/USD", "valor": float(eth_res["price"]), "variacao": "AO VIVO"}
+            {"simbolo": "BTC/USD", "valor": float(btc["price"]), "variacao": "AO VIVO"},
+            {"simbolo": "ETH/USD", "valor": float(eth["price"]), "variacao": "AO VIVO"},
+            {"simbolo": "SOL/USD", "valor": float(sol["price"]), "variacao": "AO VIVO"},
+            {"simbolo": "BNB/USD", "valor": float(bnb["price"]), "variacao": "AO VIVO"}
         ]
     except Exception:
         return [
@@ -47,35 +53,21 @@ def obter_precos_binance():
 def carregar_plataforma():
     return FileResponse("index.html")
 
-@app.post("/criar-conta")
-def criar_conta(nome: str, email: str, db: Session = Depends(get_db)):
-    try:
-        if db.query(models.Usuario).filter(models.Usuario.email == email).first():
-            raise HTTPException(status_code=400, detail="Email já cadastrado.")
-        novo_usuario = models.Usuario(nome=nome, email=email)
-        db.add(novo_usuario)
-        db.commit()
-        db.refresh(novo_usuario)
-        nova_carteira = models.CarteiraVirtual(usuario_id=novo_usuario.id, saldo_disponivel=0.0)
-        db.add(nova_carteira)
-        db.commit()
-        return {"mensagem": "Conta criada!", "usuario_id": novo_usuario.id}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.post("/depositar")
 def depositar(usuario_id: int, valor: float, db: Session = Depends(get_db)):
     try:
         carteira = db.query(models.CarteiraVirtual).filter(models.CarteiraVirtual.usuario_id == usuario_id).first()
         if not carteira:
-            raise HTTPException(status_code=404, detail="Carteira não encontrada.")
-        
+            # Auto-cria a carteira se não existir no banco da nuvem
+            novo_usuario = models.Usuario(id=usuario_id, nome="Investidor", email="admin@saasia.com")
+            db.add(novo_usuario)
+            carteira = models.CarteiraVirtual(usuario_id=usuario_id, saldo_disponivel=0.0)
+            db.add(carteira)
+            db.commit()
+            
         carteira.saldo_disponivel += valor
-        
         data_atual = datetime.now().strftime("%d/%m %H:%M")
-        nova_transacao = models.TransacaoFinanceira(usuario_id=usuario_id, tipo="DEPOSITO", ativo="BRL (PIX)", valor=valor, data_hora=data_atual)
-        db.add(nova_transacao)
-        
+        db.add(models.TransacaoFinanceira(usuario_id=usuario_id, tipo="DEPOSITO", ativo="BRL (PIX)", valor=valor, data_hora=data_atual))
         db.commit()
         return {"mensagem": "Depósito concluído", "saldo_atual": carteira.saldo_disponivel}
     except Exception as e:
@@ -86,83 +78,74 @@ def analisar_mercado_ia(usuario_id: int, db: Session = Depends(get_db)):
     try:
         noticias = ia_service.buscar_noticias_globais()
         recomendacoes = []
-
         for noticia in noticias:
             analise = ia_service.analisar_texto_com_ia(noticia.title)
-            resumo_db = f"{analise['decisao']} | {analise['mensagem']}"
-            db.add(models.HistoricoInvestimento(titulo_noticia=noticia.title, recomendacao=resumo_db))
-            
             if analise["decisao"] != "AGUARDAR":
                 recomendacoes.append({
-                    "ativo": analise["ativo"],
-                    "decisao": analise["decisao"],
-                    "motivo": analise["mensagem"],
-                    "noticia_base": noticia.title,
-                    "retorno_esperado": analise["retorno_esperado"],
+                    "ativo": analise["ativo"], "decisao": analise["decisao"],
+                    "motivo": analise["mensagem"], "retorno_esperado": analise["retorno_esperado"],
                     "tempo_retorno": analise["tempo_retorno"]
                 })
-
-        db.commit()
-        return {"mensagem": "Análise concluída", "sugestoes": recomendacoes}
+        return {"sugestoes": recomendacoes}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/executar-ordem")
 def executar_ordem(usuario_id: int, ativo: str, acao: str, valor_investido: float = 1000.0, db: Session = Depends(get_db)):
-    """ 
-    Motor de trade atualizado: aceita o valor que o usuário quer investir. 
-    Permite frações de ativos (ex: comprar R$ 500 de Bitcoin).
-    """
     try:
         carteira = db.query(models.CarteiraVirtual).filter(models.CarteiraVirtual.usuario_id == usuario_id).first()
-        if not carteira:
-            raise HTTPException(status_code=404, detail="Carteira não encontrada.")
+        if not carteira: raise HTTPException(status_code=404, detail="Carteira não encontrada.")
         
-        # Tabela de preços base do MVP
+        # O SUPER CATÁLOGO DE ATIVOS SIMULADOS
         precos_mercado = {
-            "PETR4 (Petróleo)": 38.50, "BTC (Bitcoin)": 350000.00, "IBOVESPA": 125000.00, 
-            "DÓLAR (USD/BRL)": 5.15, "OURO (XAU/USD)": 350.00, "IFIX (Fundos Imobiliários)": 105.00,
-            "ITUB4": 33.20, "MGLU3": 15.30
+            # Criptomoedas
+            "BTC (Bitcoin)": 350000.00, "ETH (Ethereum)": 18500.00, "SOL (Solana)": 850.00, "BNB (Binance Coin)": 3200.00,
+            # B3 - Blue Chips
+            "PETR4 (Petrobras)": 38.50, "VALE3 (Vale)": 62.10, "ITUB4 (Itaú)": 33.20, "BBDC4 (Bradesco)": 14.80,
+            # B3 - Varejo e Tech
+            "MGLU3 (Magalu)": 15.30, "WEGE3 (WEG)": 38.90, "RENT3 (Localiza)": 55.40,
+            # Imobiliário (FIIs)
+            "HGLG11 (Logística)": 165.00, "MXRF11 (Papel)": 10.50, "KNRI11 (Lajes)": 158.20,
+            # Commodities & Moedas
+            "OURO (XAU/USD)": 350.00, "DÓLAR (USD/BRL)": 5.15, "EURO (EUR/BRL)": 5.45,
+            # Índices
+            "IBOVESPA": 125000.00, "S&P 500 (EUA)": 26500.00
         }
         
-        # Se o ativo não estiver na lista (ex: digitado manualmente), assume R$ 100 base
         preco_unitario = precos_mercado.get(ativo, 100.00) 
         quantidade_fracionada = valor_investido / preco_unitario
         data_atual = datetime.now().strftime("%d/%m %H:%M")
         
         if acao == "COMPRAR":
             if carteira.saldo_disponivel < valor_investido:
-                raise HTTPException(status_code=400, detail=f"Saldo insuficiente para operar R$ {valor_investido:.2f}.")
-            
+                raise HTTPException(status_code=400, detail=f"Saldo insuficiente.")
             carteira.saldo_disponivel -= valor_investido
             
-            # Verifica se já tem o ativo para somar a posição
             ativo_existente = db.query(models.AtivoComprado).filter(models.AtivoComprado.usuario_id == usuario_id, models.AtivoComprado.simbolo_ativo == ativo).first()
             if ativo_existente:
                 ativo_existente.quantidade += quantidade_fracionada
-                ativo_existente.preco_compra += valor_investido # Acumula o valor total investido neste ativo
+                ativo_existente.preco_compra += valor_investido
             else:
                 db.add(models.AtivoComprado(usuario_id=usuario_id, simbolo_ativo=ativo, quantidade=quantidade_fracionada, preco_compra=valor_investido))
             
             db.add(models.TransacaoFinanceira(usuario_id=usuario_id, tipo="COMPRA", ativo=ativo, valor=valor_investido, data_hora=data_atual))
-            mensagem = f"Compra de R$ {valor_investido:.2f} em {ativo} executada."
+            mensagem = f"Compra de R$ {valor_investido:.2f} executada."
             
         elif acao == "VENDER":
             ativo_existente = db.query(models.AtivoComprado).filter(models.AtivoComprado.usuario_id == usuario_id, models.AtivoComprado.simbolo_ativo == ativo).first()
-            if not ativo_existente:
-                 raise HTTPException(status_code=400, detail="Você não possui este ativo na carteira.")
+            if not ativo_existente: raise HTTPException(status_code=400, detail="Ativo não encontrado na carteira.")
             
-            # Simulador de lucro variável para dar realismo (entre -2% e +8%)
-            multiplicador = random.uniform(0.98, 1.08)
+            # Simulador de oscilação realista do mercado
+            multiplicador = random.uniform(0.95, 1.15)
             valor_venda = ativo_existente.preco_compra * multiplicador
             
             carteira.saldo_disponivel += valor_venda
             db.delete(ativo_existente)
             db.add(models.TransacaoFinanceira(usuario_id=usuario_id, tipo="VENDA", ativo=ativo, valor=valor_venda, data_hora=data_atual))
-            mensagem = f"Venda executada! Retorno de R$ {valor_venda:.2f}."
+            mensagem = f"Venda executada. Liquidação: R$ {valor_venda:.2f}."
 
         db.commit()
-        return {"mensagem": mensagem, "saldo_atual": carteira.saldo_disponivel}
+        return {"mensagem": mensagem}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -170,39 +153,19 @@ def executar_ordem(usuario_id: int, ativo: str, acao: str, valor_investido: floa
 @app.get("/api/dados-painel")
 def obter_dados_painel(usuario_id: int = 1, db: Session = Depends(get_db)):
     try:
-        usuario = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
         carteira = db.query(models.CarteiraVirtual).filter(models.CarteiraVirtual.usuario_id == usuario_id).first()
         ativos = db.query(models.AtivoComprado).filter(models.AtivoComprado.usuario_id == usuario_id).all()
         transacoes = db.query(models.TransacaoFinanceira).filter(models.TransacaoFinanceira.usuario_id == usuario_id).order_by(models.TransacaoFinanceira.id.desc()).limit(8).all()
         
         noticias_ao_vivo = ia_service.buscar_noticias_globais()
-        lista_noticias = [{"titulo": n.title, "link": n.link} for n in noticias_ao_vivo]
-
-        cripto_real = obter_precos_binance()
-
-        indicadores = {
-            "cripto": cripto_real,
-            "commodities": [
-                {"simbolo": "OURO (Oz)", "valor": 2350.00 + random.uniform(-10, 10), "variacao": "+0.4%"},
-                {"simbolo": "BRENT (Petróleo)", "valor": 85.30 + random.uniform(-1, 1), "variacao": "-0.1%"}
-            ],
-            "acoes_imoveis": [
-                {"simbolo": "IBOVESPA", "valor": 125000.00 + random.randint(-500, 500), "variacao": "+0.8%"},
-                {"simbolo": "IFIX (Imóveis)", "valor": 3350.00 + random.randint(-10, 10), "variacao": "+0.2%"}
-            ],
-            "moedas_taxas": [
-                {"simbolo": "USD/BRL", "valor": 5.15 + random.uniform(-0.05, 0.05), "variacao": "-0.2%"},
-                {"simbolo": "SELIC", "valor": 10.50, "variacao": "Fixa"}
-            ]
-        }
-
+        
         return {
-            "nome_usuario": usuario.nome if usuario else "Investidor Master",
+            "nome_usuario": "Investidor VIP",
             "saldo": carteira.saldo_disponivel if carteira else 0.0,
             "ativos": [{"simbolo": a.simbolo_ativo, "valor": a.preco_compra, "quantidade": a.quantidade} for a in ativos],
             "transacoes": [{"tipo": t.tipo, "ativo": t.ativo, "valor": t.valor, "data": t.data_hora} for t in transacoes],
-            "feed_ao_vivo": lista_noticias,
-            "indicadores": indicadores
+            "feed_ao_vivo": [{"titulo": n.title} for n in noticias_ao_vivo],
+            "indicadores": { "cripto": obter_precos_binance() }
         }
     except Exception as e:
          raise HTTPException(status_code=500, detail=str(e))
