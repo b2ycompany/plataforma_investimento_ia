@@ -96,19 +96,12 @@ def executar_ordem(usuario_id: int, ativo: str, acao: str, valor_investido: floa
         carteira = db.query(models.CarteiraVirtual).filter(models.CarteiraVirtual.usuario_id == usuario_id).first()
         if not carteira: raise HTTPException(status_code=404, detail="Carteira não encontrada.")
         
-        # O SUPER CATÁLOGO DE ATIVOS SIMULADOS
         precos_mercado = {
-            # Criptomoedas
             "BTC (Bitcoin)": 350000.00, "ETH (Ethereum)": 18500.00, "SOL (Solana)": 850.00, "BNB (Binance Coin)": 3200.00,
-            # B3 - Blue Chips
             "PETR4 (Petrobras)": 38.50, "VALE3 (Vale)": 62.10, "ITUB4 (Itaú)": 33.20, "BBDC4 (Bradesco)": 14.80,
-            # B3 - Varejo e Tech
             "MGLU3 (Magalu)": 15.30, "WEGE3 (WEG)": 38.90, "RENT3 (Localiza)": 55.40,
-            # Imobiliário (FIIs)
             "HGLG11 (Logística)": 165.00, "MXRF11 (Papel)": 10.50, "KNRI11 (Lajes)": 158.20,
-            # Commodities & Moedas
             "OURO (XAU/USD)": 350.00, "DÓLAR (USD/BRL)": 5.15, "EURO (EUR/BRL)": 5.45,
-            # Índices
             "IBOVESPA": 125000.00, "S&P 500 (EUA)": 26500.00
         }
         
@@ -135,7 +128,6 @@ def executar_ordem(usuario_id: int, ativo: str, acao: str, valor_investido: floa
             ativo_existente = db.query(models.AtivoComprado).filter(models.AtivoComprado.usuario_id == usuario_id, models.AtivoComprado.simbolo_ativo == ativo).first()
             if not ativo_existente: raise HTTPException(status_code=400, detail="Ativo não encontrado na carteira.")
             
-            # Simulador de oscilação realista do mercado
             multiplicador = random.uniform(0.95, 1.15)
             valor_venda = ativo_existente.preco_compra * multiplicador
             
@@ -159,13 +151,30 @@ def obter_dados_painel(usuario_id: int = 1, db: Session = Depends(get_db)):
         
         noticias_ao_vivo = ia_service.buscar_noticias_globais()
         
+        # AQUI ESTÁ A CORREÇÃO: Devolvendo todos os blocos de dados necessários para o Frontend
+        indicadores_completos = {
+            "cripto": obter_precos_binance(),
+            "commodities": [
+                {"simbolo": "OURO (Oz)", "valor": 2350.00 + random.uniform(-10, 10), "variacao": "+0.4%"},
+                {"simbolo": "BRENT (Petróleo)", "valor": 85.30 + random.uniform(-1, 1), "variacao": "-0.1%"}
+            ],
+            "acoes_imoveis": [
+                {"simbolo": "IBOVESPA", "valor": 125000.00 + random.randint(-500, 500), "variacao": "+0.8%"},
+                {"simbolo": "IFIX (Imóveis)", "valor": 3350.00 + random.randint(-10, 10), "variacao": "+0.2%"}
+            ],
+            "moedas_taxas": [
+                {"simbolo": "USD/BRL", "valor": 5.15 + random.uniform(-0.05, 0.05), "variacao": "-0.2%"},
+                {"simbolo": "SELIC", "valor": 10.50, "variacao": "Fixa"}
+            ]
+        }
+        
         return {
             "nome_usuario": "Investidor VIP",
             "saldo": carteira.saldo_disponivel if carteira else 0.0,
             "ativos": [{"simbolo": a.simbolo_ativo, "valor": a.preco_compra, "quantidade": a.quantidade} for a in ativos],
             "transacoes": [{"tipo": t.tipo, "ativo": t.ativo, "valor": t.valor, "data": t.data_hora} for t in transacoes],
             "feed_ao_vivo": [{"titulo": n.title} for n in noticias_ao_vivo],
-            "indicadores": { "cripto": obter_precos_binance() }
+            "indicadores": indicadores_completos
         }
     except Exception as e:
          raise HTTPException(status_code=500, detail=str(e))
