@@ -17,7 +17,7 @@ class AtivoComprado(Base):
     __tablename__ = "ativos_comprados"
     id = Column(Integer, primary_key=True, index=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"))
-    simbolo_ativo = Column(String) # Ex: BTC, PETR4
+    simbolo_ativo = Column(String)
     quantidade = Column(Float)
     preco_compra = Column(Float)
 
@@ -27,5 +27,14 @@ class HistoricoInvestimento(Base):
     titulo_noticia = Column(String)
     recomendacao = Column(String)
 
-# Cria todas as tabelas no banco de dados
+# NOVA TABELA: Histórico de Transações do Investidor
+class TransacaoFinanceira(Base):
+    __tablename__ = "transacoes_financeiras"
+    id = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"))
+    tipo = Column(String) # DEPOSITO, COMPRA, VENDA
+    ativo = Column(String) # BRL, BTC, PETR4, etc.
+    valor = Column(Float)
+    data_hora = Column(String)
+
 Base.metadata.create_all(bind=engine)

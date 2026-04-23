@@ -1,59 +1,80 @@
 import feedparser
 
 def analisar_texto_com_ia(texto: str):
-    """ Regras da IA focadas no mercado brasileiro, criptomoedas e setores macroeconômicos. """
+    """ Motor IA com suporte a Dólar, Ouro, Petróleo, Imóveis e Cripto. """
     texto_upper = texto.upper()
     
-    # Setor de Energia / Commodities
-    if any(palavra in texto_upper for palavra in ["PETROBRAS", "PETRÓLEO", "COMMODITIES", "DIVIDENDOS"]):
+    # 1. Reserva de Valor / Ouro
+    if any(palavra in texto_upper for palavra in ["OURO", "GOLD", "RESERVA", "TENSÃO GEOPOLÍTICA"]):
         return {
-            "decisao": "COMPRAR", "ativo": "PETR4", 
-            "mensagem": "Alta demanda de energia e previsão de bons dividendos.",
-            "retorno_esperado": "+14.5% a.a.", "tempo_retorno": "Médio Prazo (6 a 12 meses)"
+            "decisao": "COMPRAR", "ativo": "OURO (XAU/USD)", 
+            "mensagem": "Busca por segurança devido a incertezas no mercado.",
+            "retorno_esperado": "+5.5% a.a. (Segurança)", "tempo_retorno": "Longo Prazo"
         }
-    # Setor Cripto / Ativos Digitais
+    # 2. Câmbio / Dólar
+    elif any(palavra in texto_upper for palavra in ["DÓLAR", "CÂMBIO", "FED", "JUROS AMERICANOS"]):
+        return {
+            "decisao": "COMPRAR", "ativo": "DÓLAR (USD/BRL)", 
+            "mensagem": "Fortalecimento da moeda americana frente a emergentes.",
+            "retorno_esperado": "+8.0% (Câmbio)", "tempo_retorno": "Curto Prazo"
+        }
+    # 3. Commodities / Petróleo
+    elif any(palavra in texto_upper for palavra in ["PETRÓLEO", "BRENT", "OPEP", "COMBUSTÍVEL", "PETROBRAS"]):
+        return {
+            "decisao": "COMPRAR", "ativo": "PETR4 (Petróleo)", 
+            "mensagem": "Corte na produção ou alta demanda elevando o preço do barril.",
+            "retorno_esperado": "+12.5% a.a.", "tempo_retorno": "Médio Prazo"
+        }
+    # 4. Mercado Imobiliário / FIIs
+    elif any(palavra in texto_upper for palavra in ["IMÓVEIS", "IMOBILIÁRIO", "FII", "ALUGUEL", "CONSTRUÇÃO"]):
+        return {
+            "decisao": "COMPRAR", "ativo": "IFIX (Fundos Imobiliários)", 
+            "mensagem": "Setor imobiliário aquecido. Boa janela para renda passiva.",
+            "retorno_esperado": "+10.5% a.a. (Isento)", "tempo_retorno": "Longo Prazo"
+        }
+    # 5. Criptoativos
     elif any(palavra in texto_upper for palavra in ["BITCOIN", "CRIPTO", "BTC", "ETHEREUM", "MOEDA DIGITAL"]):
         return {
-            "decisao": "COMPRAR", "ativo": "BTC", 
-            "mensagem": "Quebra de resistência técnica e forte adoção institucional.",
-            "retorno_esperado": "+35.0% a.a.", "tempo_retorno": "Longo Prazo (1 a 3 anos)"
+            "decisao": "COMPRAR", "ativo": "BTC (Bitcoin)", 
+            "mensagem": "Forte fluxo institucional e adoção de tecnologia blockchain.",
+            "retorno_esperado": "+40.0% a.a.", "tempo_retorno": "Longo Prazo"
         }
-    # Setor de Varejo / Consumo
-    elif any(palavra in texto_upper for palavra in ["VAREJO", "CONSUMO", "MAGALU", "MERCADO LIVRE", "VENDAS"]):
+    # 6. Mercado de Ações Geral
+    elif any(palavra in texto_upper for palavra in ["BOVESPA", "AÇÕES", "BALANÇO", "LUCRO"]):
         return {
-            "decisao": "COMPRAR", "ativo": "MGLU3", 
-            "mensagem": "Setor de varejo apresentando recuperação nas vendas sazonais.",
-            "retorno_esperado": "+8.2% a.a.", "tempo_retorno": "Curto Prazo (3 a 6 meses)"
+            "decisao": "COMPRAR", "ativo": "IBOVESPA", 
+            "mensagem": "Bolsa atrativa com empresas descontadas.",
+            "retorno_esperado": "+15.0% a.a.", "tempo_retorno": "Médio Prazo"
         }
-    # Setor Financeiro / Bancos
-    elif any(palavra in texto_upper for palavra in ["BANCO", "JUROS", "SELIC", "CRÉDITO", "ITAU", "BRADESCO"]):
+    # 7. Cenário de Crise
+    elif any(palavra in texto_upper for palavra in ["CRISE", "QUEDA LIVRE", "INFLAÇÃO FORTE", "RECESSÃO"]):
         return {
-            "decisao": "COMPRAR", "ativo": "ITUB4", 
-            "mensagem": "Margens financeiras fortes devido à manutenção das taxas de juros.",
-            "retorno_esperado": "+11.0% a.a.", "tempo_retorno": "Médio Prazo (12 meses)"
+            "decisao": "VENDER", "ativo": "AÇÕES BRASIL", 
+            "mensagem": "Risco macroeconômico severo. Proteger capital em caixa.",
+            "retorno_esperado": "Prevenção (-20%)", "tempo_retorno": "Imediato"
         }
-    # Cenário de Risco Extremo
-    elif any(palavra in texto_upper for palavra in ["QUEDA LIVRE", "CRASH", "RECESSÃO GLOBAL", "GUERRA"]):
-        return {
-            "decisao": "VENDER", "ativo": "IBOVESPA", 
-            "mensagem": "Risco macroeconômico severo detectado. Proteger capital imediatamente.",
-            "retorno_esperado": "Prevenção de Perda (-20%)", "tempo_retorno": "Imediato"
-        }
-    # Cenário Neutro
+    # Neutro
     else:
         return {
             "decisao": "AGUARDAR", "ativo": "NENHUM", 
-            "mensagem": "Mercado lateralizado. Aguarde confirmação de tendência.",
+            "mensagem": "Mercado sem tendência clara. Mantenha posição.",
             "retorno_esperado": "0.0%", "tempo_retorno": "Aguardar"
         }
 
 def buscar_noticias_globais():
-    """ Rastreia feeds oficiais Brasileiros (G1 e UOL) """
-    url_feed = "https://g1.globo.com/rss/g1/economia/"
-    feed = feedparser.parse(url_feed)
+    """ Rastreia as principais fontes de economia para varrer todos os setores. """
+    canais = [
+        "https://g1.globo.com/rss/g1/economia/",
+        "http://rss.uol.com.br/feed/economia.xml",
+        "https://br.cointelegraph.com/rss"
+    ]
     
-    if not feed.entries:
-        url_feed = "http://rss.uol.com.br/feed/economia.xml"
-        feed = feedparser.parse(url_feed)
-        
-    return feed.entries[:8] # Traz as 8 notícias mais quentes
+    todas_noticias = []
+    for url in canais:
+        try:
+            feed = feedparser.parse(url)
+            todas_noticias.extend(feed.entries[:3])
+        except Exception:
+            continue
+            
+    return todas_noticias
