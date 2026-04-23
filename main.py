@@ -39,8 +39,8 @@ def obter_precos_binance():
         ]
     except Exception:
         return [
-            {"simbolo": "BTC/USD", "valor": 64500.00, "variacao": "Simulado"},
-            {"simbolo": "ETH/USD", "valor": 3400.00, "variacao": "Simulado"}
+            {"simbolo": "BTC/USD", "valor": 350000.00, "variacao": "Simulado"},
+            {"simbolo": "ETH/USD", "valor": 18500.00, "variacao": "Simulado"}
         ]
 
 @app.get("/", response_class=HTMLResponse)
@@ -72,7 +72,6 @@ def depositar(usuario_id: int, valor: float, db: Session = Depends(get_db)):
         
         carteira.saldo_disponivel += valor
         
-        # Grava a transação no histórico
         data_atual = datetime.now().strftime("%d/%m %H:%M")
         nova_transacao = models.TransacaoFinanceira(usuario_id=usuario_id, tipo="DEPOSITO", ativo="BRL (PIX)", valor=valor, data_hora=data_atual)
         db.add(nova_transacao)
@@ -109,39 +108,58 @@ def analisar_mercado_ia(usuario_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/executar-ordem")
-def executar_ordem(usuario_id: int, ativo: str, acao: str, db: Session = Depends(get_db)):
+def executar_ordem(usuario_id: int, ativo: str, acao: str, valor_investido: float = 1000.0, db: Session = Depends(get_db)):
+    """ 
+    Motor de trade atualizado: aceita o valor que o usuário quer investir. 
+    Permite frações de ativos (ex: comprar R$ 500 de Bitcoin).
+    """
     try:
         carteira = db.query(models.CarteiraVirtual).filter(models.CarteiraVirtual.usuario_id == usuario_id).first()
         if not carteira:
             raise HTTPException(status_code=404, detail="Carteira não encontrada.")
         
+        # Tabela de preços base do MVP
         precos_mercado = {
             "PETR4 (Petróleo)": 38.50, "BTC (Bitcoin)": 350000.00, "IBOVESPA": 125000.00, 
             "DÓLAR (USD/BRL)": 5.15, "OURO (XAU/USD)": 350.00, "IFIX (Fundos Imobiliários)": 105.00,
             "ITUB4": 33.20, "MGLU3": 15.30
         }
-        custo_ativo = precos_mercado.get(ativo, 100.00) 
+        
+        # Se o ativo não estiver na lista (ex: digitado manualmente), assume R$ 100 base
+        preco_unitario = precos_mercado.get(ativo, 100.00) 
+        quantidade_fracionada = valor_investido / preco_unitario
         data_atual = datetime.now().strftime("%d/%m %H:%M")
         
         if acao == "COMPRAR":
-            if carteira.saldo_disponivel < custo_ativo:
-                raise HTTPException(status_code=400, detail=f"Saldo insuficiente. {ativo} custa R$ {custo_ativo:.2f}.")
+            if carteira.saldo_disponivel < valor_investido:
+                raise HTTPException(status_code=400, detail=f"Saldo insuficiente para operar R$ {valor_investido:.2f}.")
             
-            carteira.saldo_disponivel -= custo_ativo
-            db.add(models.AtivoComprado(usuario_id=usuario_id, simbolo_ativo=ativo, quantidade=1.0, preco_compra=custo_ativo))
-            db.add(models.TransacaoFinanceira(usuario_id=usuario_id, tipo="COMPRA", ativo=ativo, valor=custo_ativo, data_hora=data_atual))
-            mensagem = f"Ativo {ativo} integrado ao portfólio."
+            carteira.saldo_disponivel -= valor_investido
+            
+            # Verifica se já tem o ativo para somar a posição
+            ativo_existente = db.query(models.AtivoComprado).filter(models.AtivoComprado.usuario_id == usuario_id, models.AtivoComprado.simbolo_ativo == ativo).first()
+            if ativo_existente:
+                ativo_existente.quantidade += quantidade_fracionada
+                ativo_existente.preco_compra += valor_investido # Acumula o valor total investido neste ativo
+            else:
+                db.add(models.AtivoComprado(usuario_id=usuario_id, simbolo_ativo=ativo, quantidade=quantidade_fracionada, preco_compra=valor_investido))
+            
+            db.add(models.TransacaoFinanceira(usuario_id=usuario_id, tipo="COMPRA", ativo=ativo, valor=valor_investido, data_hora=data_atual))
+            mensagem = f"Compra de R$ {valor_investido:.2f} em {ativo} executada."
             
         elif acao == "VENDER":
             ativo_existente = db.query(models.AtivoComprado).filter(models.AtivoComprado.usuario_id == usuario_id, models.AtivoComprado.simbolo_ativo == ativo).first()
             if not ativo_existente:
-                 raise HTTPException(status_code=400, detail="Ativo não encontrado na carteira.")
+                 raise HTTPException(status_code=400, detail="Você não possui este ativo na carteira.")
             
-            lucro_simulado = ativo_existente.preco_compra * 1.05 
-            carteira.saldo_disponivel += lucro_simulado
+            # Simulador de lucro variável para dar realismo (entre -2% e +8%)
+            multiplicador = random.uniform(0.98, 1.08)
+            valor_venda = ativo_existente.preco_compra * multiplicador
+            
+            carteira.saldo_disponivel += valor_venda
             db.delete(ativo_existente)
-            db.add(models.TransacaoFinanceira(usuario_id=usuario_id, tipo="VENDA", ativo=ativo, valor=lucro_simulado, data_hora=data_atual))
-            mensagem = f"Posição liquidada com lucro!"
+            db.add(models.TransacaoFinanceira(usuario_id=usuario_id, tipo="VENDA", ativo=ativo, valor=valor_venda, data_hora=data_atual))
+            mensagem = f"Venda executada! Retorno de R$ {valor_venda:.2f}."
 
         db.commit()
         return {"mensagem": mensagem, "saldo_atual": carteira.saldo_disponivel}
@@ -181,7 +199,7 @@ def obter_dados_painel(usuario_id: int = 1, db: Session = Depends(get_db)):
         return {
             "nome_usuario": usuario.nome if usuario else "Investidor Master",
             "saldo": carteira.saldo_disponivel if carteira else 0.0,
-            "ativos": [{"simbolo": a.simbolo_ativo, "valor": a.preco_compra} for a in ativos],
+            "ativos": [{"simbolo": a.simbolo_ativo, "valor": a.preco_compra, "quantidade": a.quantidade} for a in ativos],
             "transacoes": [{"tipo": t.tipo, "ativo": t.ativo, "valor": t.valor, "data": t.data_hora} for t in transacoes],
             "feed_ao_vivo": lista_noticias,
             "indicadores": indicadores

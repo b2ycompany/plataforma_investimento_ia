@@ -11,6 +11,7 @@
         body { font-family: 'Inter', sans-serif; background-color: #0b0f19; color: #e2e8f0; overflow-x: hidden; }
         
         .glass { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .glass-dark { background: rgba(11, 15, 25, 0.9); border: 1px solid rgba(255, 255, 255, 0.1); }
         .text-glow { text-shadow: 0 0 15px rgba(56, 189, 248, 0.5); }
         
         #splash-screen {
@@ -27,6 +28,10 @@
 
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        
+        /* Input styling for trade terminal */
+        .trade-input { background: transparent; border: none; outline: none; color: white; font-weight: bold; width: 100%; text-align: right;}
+        .trade-input::placeholder { color: #475569; font-weight: normal;}
     </style>
 </head>
 <body class="antialiased">
@@ -34,7 +39,7 @@
     <div id="splash-screen">
         <div class="loader-ring mb-6"></div>
         <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-sky-400 to-blue-600 tracking-tighter text-center">SaaSIA WEALTH</h1>
-        <p class="text-slate-400 mt-2 text-xs md:text-sm tracking-widest uppercase text-center px-4">Conectando Global Markets: Dólar, Ouro, Cripto & B3...</p>
+        <p class="text-slate-400 mt-2 text-xs md:text-sm tracking-widest uppercase text-center px-4">Carregando Terminal de Negociação Avançada...</p>
     </div>
 
     <div class="bg-slate-900/50 border-b border-slate-800/80 py-2 text-xs font-bold ticker-wrapper text-slate-300">
@@ -84,27 +89,67 @@
         </div>
 
         <div class="lg:col-span-2 space-y-6">
-            <div class="glass p-5 md:p-8 rounded-2xl border border-sky-500/30 relative overflow-hidden text-center">
-                <div class="absolute inset-0 bg-gradient-to-b from-sky-500/10 to-transparent pointer-events-none"></div>
-                <h2 class="text-xl md:text-2xl font-black mb-2">Motor de Análise Institucional IA</h2>
-                <p class="text-slate-400 text-xs md:text-sm mb-6 md:mb-8 px-2">Analisando Petróleo, Ouro, Imóveis, Criptomoedas e Ações em tempo real para projetar os melhores retornos.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                <button type="button" onclick="event.preventDefault(); solicitarAnalise()" id="btnIA" class="w-full md:w-auto bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white px-4 md:px-8 py-4 rounded-xl font-bold text-sm md:text-lg shadow-[0_0_20px_rgba(56,189,248,0.3)] hover:shadow-[0_0_30px_rgba(56,189,248,0.6)] transition-all transform hover:-translate-y-1">
-                    Avaliar Todos os Mercados
-                </button>
+                <div class="glass p-6 rounded-2xl border border-sky-500/30 flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-lg font-black mb-2 flex items-center"><span class="w-2 h-2 rounded-full bg-sky-500 mr-2 animate-pulse"></span> Auto-Trade IA</h2>
+                        <p class="text-slate-400 text-xs mb-6">A IA escaneia as notícias globais e executa a melhor ordem para si instantaneamente.</p>
+                    </div>
+                    <button type="button" onclick="event.preventDefault(); solicitarAnalise()" id="btnIA" class="w-full bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg transition-all transform hover:-translate-y-1">
+                        Escanear & Investir Automático
+                    </button>
+                </div>
+
+                <div class="glass-dark p-6 rounded-2xl border border-slate-700">
+                    <h2 class="text-lg font-black mb-4">Terminal Manual</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-slate-800 rounded-lg p-2 border border-slate-700">
+                            <label class="text-[10px] text-slate-400 px-2 uppercase font-bold">Ativo</label>
+                            <select id="manualAtivo" class="w-full bg-transparent text-white font-bold text-sm outline-none px-2 py-1">
+                                <option value="BTC (Bitcoin)">Bitcoin (BTC)</option>
+                                <option value="ETH (Ethereum)">Ethereum (ETH)</option>
+                                <option value="OURO (XAU/USD)">Ouro Físico</option>
+                                <option value="DÓLAR (USD/BRL)">Dólar Americano</option>
+                                <option value="PETR4 (Petróleo)">Petrobras (PETR4)</option>
+                                <option value="IFIX (Fundos Imobiliários)">Fundo Imobiliário (IFIX)</option>
+                                <option value="IBOVESPA">Índice Bovespa</option>
+                            </select>
+                        </div>
+                        
+                        <div class="bg-slate-800 rounded-lg p-2 border border-slate-700 flex items-center justify-between">
+                            <div class="flex-col px-2">
+                                <label class="text-[10px] text-slate-400 uppercase font-bold">Valor (R$)</label>
+                                <span class="text-slate-500 text-xs block">Disponível: <span id="lblSaldoForm" class="text-sky-400">0.00</span></span>
+                            </div>
+                            <input type="number" id="manualValor" class="trade-input text-lg pr-2" placeholder="0.00">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 mt-2">
+                            <button type="button" onclick="event.preventDefault(); executarOrdemManual('COMPRAR')" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg text-sm transition-colors">
+                                COMPRAR
+                            </button>
+                            <button type="button" onclick="event.preventDefault(); executarOrdemManual('VENDER')" class="bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg text-sm transition-colors">
+                                VENDER
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div>
-                <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4 ml-2">Resultados da Inteligência</h3>
+                <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4 ml-2">Última Operação IA</h3>
                 <div id="painelSugestoes" class="grid grid-cols-1 gap-4">
                     <div class="glass p-6 rounded-xl text-center text-slate-500 text-sm border border-dashed border-slate-700">
-                        Aguardando comando para escanear a economia global.
+                        Nenhuma operação automática no momento.
                     </div>
                 </div>
             </div>
 
             <div class="glass p-5 md:p-6 rounded-2xl">
-                <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">Histórico de Transações</h3>
+                <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">Livro de Ordens (Histórico)</h3>
                 <ul id="listaTransacoes" class="space-y-3">
                     <li class="text-slate-500 text-sm">Sem movimentações recentes.</li>
                 </ul>
@@ -112,21 +157,21 @@
         </div>
 
         <div class="lg:col-span-1 space-y-6">
-            <div class="glass p-5 md:p-6 rounded-2xl flex flex-col min-h-[300px]">
+            <div class="glass p-5 md:p-6 rounded-2xl">
+                <h3 class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4">Meus Ativos Comprados</h3>
+                <ul id="listaAtivos" class="space-y-2 text-sm text-slate-500">
+                    <li>Sua carteira está vazia.</li>
+                </ul>
+            </div>
+
+            <div class="glass p-5 md:p-6 rounded-2xl flex flex-col min-h-[400px]">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Live News Global</h3>
                     <span class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span>
                 </div>
-                <div class="overflow-y-auto flex-1 pr-2 space-y-4" style="max-height: 400px;" id="listaRadar">
+                <div class="overflow-y-auto flex-1 pr-2 space-y-4" style="max-height: 500px;" id="listaRadar">
                     <p class="text-sm text-slate-500 text-center mt-10">Buscando fontes...</p>
                 </div>
-            </div>
-
-            <div class="glass p-5 md:p-6 rounded-2xl">
-                <h3 class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4">Meus Ativos</h3>
-                <ul id="listaAtivos" class="space-y-2 text-sm text-slate-500">
-                    <li>Sua carteira está vazia.</li>
-                </ul>
             </div>
         </div>
 
@@ -135,7 +180,8 @@
     <script>
         const API_URL = ""; 
         const USUARIO_ID = 1;
-        let graficoPortfolio; // Variável global para o gráfico
+        let graficoPortfolio; 
+        let saldoAtual = 0.0;
 
         window.addEventListener('load', () => {
             setTimeout(() => {
@@ -147,15 +193,11 @@
 
         function desenharGrafico(ativos) {
             const ctx = document.getElementById('portfolioChart').getContext('2d');
-            
-            // Destrói o gráfico antigo se existir para não sobrepor
-            if (graficoPortfolio) {
-                graficoPortfolio.destroy();
-            }
+            if (graficoPortfolio) graficoPortfolio.destroy();
 
             let labels = [];
             let dados = [];
-            let cores = ['#38bdf8', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#818cf8'];
+            let cores = ['#38bdf8', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#818cf8', '#ec4899'];
 
             if (ativos.length === 0) {
                 labels = ['Caixa Livre'];
@@ -170,21 +212,10 @@
 
             graficoPortfolio = new Chart(ctx, {
                 type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: dados,
-                        backgroundColor: cores,
-                        borderWidth: 0,
-                        hoverOffset: 4
-                    }]
-                },
+                data: { labels: labels, datasets: [{ data: dados, backgroundColor: cores, borderWidth: 0, hoverOffset: 4 }] },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 10 } } }
-                    },
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 10 } } } },
                     cutout: '75%'
                 }
             });
@@ -195,8 +226,10 @@
                 const res = await fetch(`${API_URL}/api/dados-painel?usuario_id=${USUARIO_ID}`);
                 const data = await res.json();
 
+                saldoAtual = data.saldo;
                 document.getElementById('nomeUsuario').innerText = data.nome_usuario;
-                document.getElementById('saldoAtual').innerText = parseFloat(data.saldo).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('saldoAtual').innerText = parseFloat(saldoAtual).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('lblSaldoForm').innerText = parseFloat(saldoAtual).toLocaleString('pt-BR', {minimumFractionDigits: 2});
 
                 desenharGrafico(data.ativos);
 
@@ -211,12 +244,7 @@
                 const listaMacro = document.getElementById('listaMacro');
                 listaMacro.innerHTML = '';
                 data.indicadores.moedas_taxas.forEach(taxa => {
-                    listaMacro.innerHTML += `
-                        <div class="flex justify-between items-center bg-slate-800/40 p-2 rounded-lg border border-slate-700/50">
-                            <span class="text-slate-300 font-medium text-xs">${taxa.simbolo}</span>
-                            <span class="text-yellow-400 font-bold text-sm">${taxa.valor.toLocaleString('pt-BR')}</span>
-                        </div>
-                    `;
+                    listaMacro.innerHTML += `<div class="flex justify-between items-center bg-slate-800/40 p-2 rounded-lg border border-slate-700/50"><span class="text-slate-300 font-medium text-xs">${taxa.simbolo}</span><span class="text-yellow-400 font-bold text-sm">${taxa.valor.toLocaleString('pt-BR')}</span></div>`;
                 });
 
                 const listaAtivos = document.getElementById('listaAtivos');
@@ -225,16 +253,10 @@
                     listaAtivos.innerHTML = '<li>Sua carteira está vazia.</li>';
                 } else {
                     data.ativos.forEach(ativo => {
-                        listaAtivos.innerHTML += `
-                            <li class="flex justify-between items-center bg-slate-800/60 p-2 rounded border border-slate-700 text-white font-bold text-xs">
-                                <span class="truncate pr-2">${ativo.simbolo}</span>
-                                <span class="text-sky-400 whitespace-nowrap">R$ ${ativo.valor.toFixed(2)}</span>
-                            </li>
-                        `;
+                        listaAtivos.innerHTML += `<li class="flex flex-col bg-slate-800/60 p-2 rounded border border-slate-700 text-white font-bold text-xs"><div class="flex justify-between"><span class="truncate pr-2">${ativo.simbolo}</span><span class="text-sky-400 whitespace-nowrap">R$ ${ativo.valor.toFixed(2)}</span></div><span class="text-[9px] text-slate-500 font-normal mt-1">Vol: ${ativo.quantidade.toFixed(4)} unidades</span></li>`;
                     });
                 }
 
-                // NOVO: Preencher Histórico de Transações
                 const listaTransacoes = document.getElementById('listaTransacoes');
                 listaTransacoes.innerHTML = '';
                 if (data.transacoes.length === 0) {
@@ -243,15 +265,9 @@
                     data.transacoes.forEach(t => {
                         let corSinal = (t.tipo === 'COMPRA') ? 'text-red-400' : 'text-green-400';
                         let sinal = (t.tipo === 'COMPRA') ? '-' : '+';
-                        listaTransacoes.innerHTML += `
-                            <li class="flex justify-between items-center bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
-                                <div>
-                                    <p class="text-slate-200 font-bold text-xs">${t.tipo}: <span class="text-slate-400 font-normal">${t.ativo}</span></p>
-                                    <p class="text-[10px] text-slate-500 mt-1">${t.data}</p>
-                                </div>
-                                <span class="${corSinal} font-black text-sm">${sinal} R$ ${t.valor.toFixed(2)}</span>
-                            </li>
-                        `;
+                        if(t.tipo === 'DEPOSITO') { corSinal = 'text-sky-400'; sinal = '+'; }
+                        
+                        listaTransacoes.innerHTML += `<li class="flex justify-between items-center bg-slate-800/30 p-3 rounded-lg border border-slate-700/50"><div><p class="text-slate-200 font-bold text-xs">${t.tipo}: <span class="text-slate-400 font-normal">${t.ativo}</span></p><p class="text-[10px] text-slate-500 mt-1">${t.data}</p></div><span class="${corSinal} font-black text-sm">${sinal} R$ ${t.valor.toFixed(2)}</span></li>`;
                     });
                 }
 
@@ -261,12 +277,7 @@
                     listaRadar.innerHTML = '<p class="text-sm text-slate-500">Nenhuma notícia de impacto.</p>';
                 } else {
                     data.feed_ao_vivo.forEach(item => {
-                        listaRadar.innerHTML += `
-                            <div class="bg-slate-800/30 p-4 rounded-xl border border-slate-700/50 hover:bg-slate-800/70 transition-colors">
-                                <p class="text-slate-200 text-xs md:text-sm font-medium leading-relaxed mb-2">${item.titulo}</p>
-                                <span class="text-[9px] font-bold uppercase px-2 py-1 bg-blue-900/50 text-blue-400 rounded">Radar Ativo</span>
-                            </div>
-                        `;
+                        listaRadar.innerHTML += `<div class="bg-slate-800/30 p-3 rounded-xl border border-slate-700/50 hover:bg-slate-800/70 transition-colors"><p class="text-slate-200 text-xs md:text-sm font-medium leading-relaxed mb-2">${item.titulo}</p><span class="text-[9px] font-bold uppercase px-2 py-1 bg-blue-900/50 text-blue-400 rounded">Radar Ativo</span></div>`;
                     });
                 }
 
@@ -276,20 +287,37 @@
         }
 
         async function realizarDeposito() {
-            let valor = prompt("Valor do Aporte Institucional (BRL):", "50000");
+            let valor = prompt("Valor do Aporte (BRL):", "10000");
             if (valor && !isNaN(valor)) {
                 await fetch(`${API_URL}/depositar?usuario_id=${USUARIO_ID}&valor=${valor}`, { method: 'POST' });
                 atualizarPainel();
             }
         }
 
-        async function executarOrdem(ativo, acao) {
+        // Função para o Trade Manual da Interface
+        async function executarOrdemManual(acao) {
+            const ativo = document.getElementById('manualAtivo').value;
+            let valorStr = document.getElementById('manualValor').value;
+            
+            if(!valorStr || isNaN(valorStr) || parseFloat(valorStr) <= 0) {
+                if(acao === 'COMPRAR') {
+                    alert("Digite um valor válido em R$ para comprar.");
+                    return;
+                }
+                valorStr = "0"; // Vender não precisa do input de valor, ele vende a posição.
+            }
+            
+            const valorFloat = parseFloat(valorStr);
+            executarOrdem(ativo, acao, valorFloat);
+            document.getElementById('manualValor').value = ""; // limpa o campo
+        }
+
+        async function executarOrdem(ativo, acao, valor = 1000.0) {
             try {
-                const res = await fetch(`${API_URL}/executar-ordem?usuario_id=${USUARIO_ID}&ativo=${ativo}&acao=${acao}`, { method: 'POST' });
+                const res = await fetch(`${API_URL}/executar-ordem?usuario_id=${USUARIO_ID}&ativo=${ativo}&acao=${acao}&valor_investido=${valor}`, { method: 'POST' });
                 const data = await res.json();
                 
                 if (res.ok) {
-                    alert(`✅ ORDEM EXECUTADA: ${data.mensagem}`);
                     atualizarPainel(); 
                 } else {
                     alert(`❌ RECUSADO: ${data.detail}`);
@@ -303,9 +331,9 @@
             const btn = document.getElementById('btnIA');
             const painel = document.getElementById('painelSugestoes');
             
-            btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></div> Analisando Macroeconomia...`;
+            btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></div> Processando...`;
             btn.classList.add("opacity-70", "cursor-wait");
-            painel.innerHTML = `<div class="text-center text-sky-400 animate-pulse py-8 text-sm">Avaliando Cripto, Imóveis, Commodities e Ações...</div>`;
+            painel.innerHTML = `<div class="text-center text-sky-400 animate-pulse py-8 text-sm">Avaliando o mercado para executar ordem automática...</div>`;
             
             try {
                 const res = await fetch(`${API_URL}/solicitar-analise-ia?usuario_id=${USUARIO_ID}`, { method: 'POST' });
@@ -313,47 +341,29 @@
                 
                 painel.innerHTML = '';
                 if(data.sugestoes.length === 0) {
-                    painel.innerHTML = `<div class="glass p-6 rounded-xl text-center text-yellow-400 border border-yellow-500/30 text-sm">Sem janelas seguras de investimento hoje.</div>`;
+                    painel.innerHTML = `<div class="glass p-6 rounded-xl text-center text-yellow-400 border border-yellow-500/30 text-sm">Mercado volátil. A IA optou por não investir agora.</div>`;
                 } else {
-                    data.sugestoes.forEach(sug => {
-                        let corBorder = sug.decisao === 'COMPRAR' ? 'border-green-500/50' : 'border-red-500/50';
-                        let corText = sug.decisao === 'COMPRAR' ? 'text-green-400' : 'text-red-400';
-                        
-                        painel.innerHTML += `
-                            <div class="glass p-4 md:p-5 rounded-xl border ${corBorder} flex flex-col items-start gap-4">
-                                <div class="flex flex-col md:flex-row justify-between w-full items-start gap-3 md:gap-0">
-                                    <div>
-                                        <div class="flex flex-wrap gap-2 mb-2">
-                                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest bg-slate-900 px-2 py-1 rounded">Setor Analisado</span>
-                                            <span class="text-[9px] font-bold ${corText} uppercase tracking-widest bg-slate-900 px-2 py-1 rounded">Ação: ${sug.decisao}</span>
-                                        </div>
-                                        <h4 class="text-xl md:text-2xl font-black text-white">${sug.ativo}</h4>
-                                        <p class="text-[11px] md:text-xs text-slate-400 mt-1 max-w-lg italic line-clamp-3 md:line-clamp-none">Inteligência: "${sug.motivo}"</p>
-                                    </div>
-                                    <button type="button" onclick="event.preventDefault(); executarOrdem('${sug.ativo}', '${sug.decisao}')" class="w-full md:w-auto bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 text-white px-4 md:px-6 py-3 rounded-lg font-bold text-xs md:text-sm shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all whitespace-nowrap mt-2 md:mt-0">
-                                        Aplicar Capital
-                                    </button>
-                                </div>
-                                
-                                <div class="w-full grid grid-cols-2 gap-2 md:gap-4 mt-2 border-t border-slate-700/50 pt-3 md:pt-4">
-                                    <div>
-                                        <p class="text-[9px] md:text-[10px] text-slate-500 uppercase font-bold">Retorno Estimado (ROI)</p>
-                                        <p class="text-base md:text-lg font-black text-green-400">${sug.retorno_esperado}</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-[9px] md:text-[10px] text-slate-500 uppercase font-bold">Horizonte</p>
-                                        <p class="text-base md:text-lg font-black text-sky-400">${sug.tempo_retorno}</p>
-                                    </div>
-                                </div>
+                    // Pega a melhor sugestão e já executa uma ordem de R$ 1000 automaticamente
+                    const melhorSugestao = data.sugestoes[0];
+                    await executarOrdem(melhorSugestao.ativo, melhorSugestao.decisao, 1000.0);
+                    
+                    let corText = melhorSugestao.decisao === 'COMPRAR' ? 'text-green-400' : 'text-red-400';
+                    painel.innerHTML = `
+                        <div class="glass p-4 rounded-xl border border-green-500/50 flex flex-col items-start gap-2">
+                            <div class="flex flex-wrap gap-2 mb-1">
+                                <span class="text-[9px] font-bold text-slate-400 uppercase bg-slate-900 px-2 py-1 rounded">Ordem IA Executada</span>
+                                <span class="text-[9px] font-bold ${corText} uppercase bg-slate-900 px-2 py-1 rounded">${melhorSugestao.decisao} R$ 1000</span>
                             </div>
-                        `;
-                    });
+                            <h4 class="text-xl font-black text-white">${melhorSugestao.ativo}</h4>
+                            <p class="text-[11px] text-slate-400 mt-1 italic">"${melhorSugestao.motivo}"</p>
+                        </div>
+                    `;
                 }
             } catch (error) {
-                painel.innerHTML = `<div class="text-red-400 text-sm text-center">Falha ao conectar com o motor de análise.</div>`;
+                painel.innerHTML = `<div class="text-red-400 text-sm text-center">Falha na IA.</div>`;
             }
             
-            btn.innerHTML = `Avaliar Todos os Mercados`;
+            btn.innerHTML = `Escanear & Investir Automático`;
             btn.classList.remove("opacity-70", "cursor-wait");
         }
     </script>
