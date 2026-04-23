@@ -27,14 +27,14 @@ class HistoricoInvestimento(Base):
     titulo_noticia = Column(String)
     recomendacao = Column(String)
 
-# NOVA TABELA: Histórico de Transações do Investidor
 class TransacaoFinanceira(Base):
     __tablename__ = "transacoes_financeiras"
     id = Column(Integer, primary_key=True, index=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"))
-    tipo = Column(String) # DEPOSITO, COMPRA, VENDA
-    ativo = Column(String) # BRL, BTC, PETR4, etc.
+    tipo = Column(String)
+    ativo = Column(String)
     valor = Column(Float)
     data_hora = Column(String)
 
+# Cria as tabelas que estiverem faltando
 Base.metadata.create_all(bind=engine)

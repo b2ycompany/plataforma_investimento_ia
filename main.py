@@ -30,7 +30,6 @@ def get_db():
         db.close()
 
 def obter_precos_binance():
-    # Tenta buscar os top 4 criptoativos para dar o "Efeito Binance"
     try:
         btc = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT", timeout=3).json()
         eth = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT", timeout=3).json()
@@ -49,6 +48,24 @@ def obter_precos_binance():
             {"simbolo": "ETH/USD", "valor": 18500.00, "variacao": "Simulado"}
         ]
 
+def garantir_usuario_e_carteira(db: Session, usuario_id: int):
+    """ Garante que o usuário e a carteira existem no banco de dados para evitar erro de Foreign Key. """
+    usuario = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
+    if not usuario:
+        usuario = models.Usuario(id=usuario_id, nome="Investidor Premium", email=f"investidor{usuario_id}@saasia.com")
+        db.add(usuario)
+        db.commit()
+        db.refresh(usuario)
+        
+    carteira = db.query(models.CarteiraVirtual).filter(models.CarteiraVirtual.usuario_id == usuario_id).first()
+    if not carteira:
+        carteira = models.CarteiraVirtual(usuario_id=usuario_id, saldo_disponivel=0.0)
+        db.add(carteira)
+        db.commit()
+        db.refresh(carteira)
+        
+    return carteira
+
 @app.get("/", response_class=HTMLResponse)
 def carregar_plataforma():
     return FileResponse("index.html")
@@ -56,22 +73,19 @@ def carregar_plataforma():
 @app.post("/depositar")
 def depositar(usuario_id: int, valor: float, db: Session = Depends(get_db)):
     try:
-        carteira = db.query(models.CarteiraVirtual).filter(models.CarteiraVirtual.usuario_id == usuario_id).first()
-        if not carteira:
-            # Auto-cria a carteira se não existir no banco da nuvem
-            novo_usuario = models.Usuario(id=usuario_id, nome="Investidor", email="admin@saasia.com")
-            db.add(novo_usuario)
-            carteira = models.CarteiraVirtual(usuario_id=usuario_id, saldo_disponivel=0.0)
-            db.add(carteira)
-            db.commit()
+        carteira = garantir_usuario_e_carteira(db, usuario_id)
             
         carteira.saldo_disponivel += valor
         data_atual = datetime.now().strftime("%d/%m %H:%M")
-        db.add(models.TransacaoFinanceira(usuario_id=usuario_id, tipo="DEPOSITO", ativo="BRL (PIX)", valor=valor, data_hora=data_atual))
+        
+        nova_transacao = models.TransacaoFinanceira(usuario_id=usuario_id, tipo="DEPOSITO", ativo="BRL (PIX)", valor=valor, data_hora=data_atual)
+        db.add(nova_transacao)
+        
         db.commit()
-        return {"mensagem": "Depósito concluído", "saldo_atual": carteira.saldo_disponivel}
+        return {"mensagem": "Depósito processado com sucesso!", "saldo_atual": carteira.saldo_disponivel}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        db.rollback() # Previne travamento do banco
+        raise HTTPException(status_code=500, detail=f"Erro no banco de dados: {str(e)}")
 
 @app.post("/solicitar-analise-ia")
 def analisar_mercado_ia(usuario_id: int, db: Session = Depends(get_db)):
@@ -88,13 +102,13 @@ def analisar_mercado_ia(usuario_id: int, db: Session = Depends(get_db)):
                 })
         return {"sugestoes": recomendacoes}
     except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/executar-ordem")
 def executar_ordem(usuario_id: int, ativo: str, acao: str, valor_investido: float = 1000.0, db: Session = Depends(get_db)):
     try:
-        carteira = db.query(models.CarteiraVirtual).filter(models.CarteiraVirtual.usuario_id == usuario_id).first()
-        if not carteira: raise HTTPException(status_code=404, detail="Carteira não encontrada.")
+        carteira = garantir_usuario_e_carteira(db, usuario_id)
         
         precos_mercado = {
             "BTC (Bitcoin)": 350000.00, "ETH (Ethereum)": 18500.00, "SOL (Solana)": 850.00, "BNB (Binance Coin)": 3200.00,
@@ -111,7 +125,7 @@ def executar_ordem(usuario_id: int, ativo: str, acao: str, valor_investido: floa
         
         if acao == "COMPRAR":
             if carteira.saldo_disponivel < valor_investido:
-                raise HTTPException(status_code=400, detail=f"Saldo insuficiente.")
+                raise HTTPException(status_code=400, detail=f"Saldo insuficiente. Deposite via PIX.")
             carteira.saldo_disponivel -= valor_investido
             
             ativo_existente = db.query(models.AtivoComprado).filter(models.AtivoComprado.usuario_id == usuario_id, models.AtivoComprado.simbolo_ativo == ativo).first()
@@ -126,7 +140,8 @@ def executar_ordem(usuario_id: int, ativo: str, acao: str, valor_investido: floa
             
         elif acao == "VENDER":
             ativo_existente = db.query(models.AtivoComprado).filter(models.AtivoComprado.usuario_id == usuario_id, models.AtivoComprado.simbolo_ativo == ativo).first()
-            if not ativo_existente: raise HTTPException(status_code=400, detail="Ativo não encontrado na carteira.")
+            if not ativo_existente: 
+                raise HTTPException(status_code=400, detail="Ativo não encontrado na sua carteira.")
             
             multiplicador = random.uniform(0.95, 1.15)
             valor_venda = ativo_existente.preco_compra * multiplicador
@@ -134,24 +149,29 @@ def executar_ordem(usuario_id: int, ativo: str, acao: str, valor_investido: floa
             carteira.saldo_disponivel += valor_venda
             db.delete(ativo_existente)
             db.add(models.TransacaoFinanceira(usuario_id=usuario_id, tipo="VENDA", ativo=ativo, valor=valor_venda, data_hora=data_atual))
-            mensagem = f"Venda executada. Liquidação: R$ {valor_venda:.2f}."
+            mensagem = f"Venda executada. Retorno: R$ {valor_venda:.2f}."
 
         db.commit()
         return {"mensagem": mensagem}
         
+    except HTTPException as http_exc:
+        db.rollback()
+        raise http_exc
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 @app.get("/api/dados-painel")
 def obter_dados_painel(usuario_id: int = 1, db: Session = Depends(get_db)):
     try:
-        carteira = db.query(models.CarteiraVirtual).filter(models.CarteiraVirtual.usuario_id == usuario_id).first()
+        # Usa a mesma função de garantia para não quebrar a Dashboard
+        carteira = garantir_usuario_e_carteira(db, usuario_id)
+        
         ativos = db.query(models.AtivoComprado).filter(models.AtivoComprado.usuario_id == usuario_id).all()
         transacoes = db.query(models.TransacaoFinanceira).filter(models.TransacaoFinanceira.usuario_id == usuario_id).order_by(models.TransacaoFinanceira.id.desc()).limit(8).all()
         
         noticias_ao_vivo = ia_service.buscar_noticias_globais()
         
-        # AQUI ESTÁ A CORREÇÃO: Devolvendo todos os blocos de dados necessários para o Frontend
         indicadores_completos = {
             "cripto": obter_precos_binance(),
             "commodities": [
@@ -177,4 +197,5 @@ def obter_dados_painel(usuario_id: int = 1, db: Session = Depends(get_db)):
             "indicadores": indicadores_completos
         }
     except Exception as e:
-         raise HTTPException(status_code=500, detail=str(e))
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))

@@ -11,13 +11,12 @@
         
         body { 
             font-family: 'Inter', sans-serif; 
-            background-color: #050b14; /* Fundo ainda mais profundo e elegante */
+            background-color: #050b14;
             background-image: radial-gradient(circle at 50% 0%, #0c1e3e 0%, transparent 50%);
             color: #e2e8f0; 
             overflow-x: hidden; 
         }
         
-        /* Efeito Glassmorphism Premium */
         .glass { 
             background: rgba(15, 23, 42, 0.4); 
             backdrop-filter: blur(16px); 
@@ -32,11 +31,9 @@
             border: 1px solid rgba(255, 255, 255, 0.08); 
         }
 
-        /* Tipografia e Brilhos */
         .text-glow { text-shadow: 0 0 20px rgba(56, 189, 248, 0.6); }
         .box-glow { box-shadow: 0 0 20px rgba(56, 189, 248, 0.15); }
         
-        /* Loader Inicial */
         #splash-screen {
             position: fixed; inset: 0; background: #050b14; z-index: 9999;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -45,26 +42,21 @@
         .loader-ring { width: 70px; height: 70px; border: 3px solid rgba(56,189,248,0.1); border-top-color: #38bdf8; border-radius: 50%; animation: spin 1s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         
-        /* Ticker Animado */
         .ticker-wrapper { overflow: hidden; white-space: nowrap; box-sizing: border-box; }
         .ticker-content { display: inline-block; animation: ticker 30s linear infinite; }
         .ticker-wrapper:hover .ticker-content { animation-play-state: paused; cursor: default; }
         @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
 
-        /* Customização de Scrollbar para ficar invisível mas funcional */
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
         
-        /* Inputs e Selects Corrigidos */
         .trade-input { background: transparent; border: none; outline: none; color: white; font-weight: 800; width: 100%; text-align: right; font-size: 1.25rem;}
         .trade-input::placeholder { color: #334155; font-weight: 500;}
         
-        /* Esconde setas do input number */
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         
-        /* Estilização do Select para não ficar branco */
         select option { background-color: #0f172a; color: #f8fafc; font-weight: 500; padding: 10px; }
         select optgroup { background-color: #020617; color: #94a3b8; font-weight: 800; font-style: normal; }
     </style>
@@ -106,7 +98,6 @@
     <main class="max-w-screen-2xl mx-auto px-4 md:px-8 py-8 md:py-10 grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-8">
 
         <div class="lg:col-span-1 space-y-6 md:space-y-8">
-            
             <div class="glass p-6 md:p-8 rounded-3xl relative overflow-hidden group hover:border-sky-500/30 transition-all duration-300">
                 <div class="absolute -right-20 -top-20 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl group-hover:bg-sky-500/20 transition-all duration-500"></div>
                 <div class="flex justify-between items-center mb-2">
@@ -137,7 +128,6 @@
         </div>
 
         <div class="lg:col-span-2 space-y-6 md:space-y-8">
-            
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                 
                 <div class="glass p-6 md:p-8 rounded-3xl border border-sky-500/20 flex flex-col justify-between relative overflow-hidden group hover:border-sky-500/40 transition-all">
@@ -167,11 +157,9 @@
                     <div class="space-y-5">
                         <div class="bg-[#0b1120] rounded-xl p-3 border border-slate-700/80 focus-within:border-sky-500/50 transition-colors relative">
                             <label class="text-[9px] text-slate-500 px-1 uppercase font-bold tracking-widest block mb-1">Selecione o Ativo</label>
-                            
                             <div class="absolute right-4 top-1/2 mt-1 pointer-events-none text-slate-400">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                             </div>
-
                             <select id="manualAtivo" class="w-full bg-transparent text-white font-bold text-sm md:text-base outline-none px-1 appearance-none cursor-pointer">
                                 <optgroup label="🔥 Criptomoedas (Crypto)">
                                     <option value="BTC (Bitcoin)">Bitcoin (BTC)</option>
@@ -237,7 +225,6 @@
         </div>
 
         <div class="lg:col-span-1 space-y-6 md:space-y-8">
-            
             <div class="glass p-6 rounded-3xl">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Posições Abertas</h3>
@@ -314,6 +301,8 @@
                 const res = await fetch(`${API_URL}/api/dados-painel?usuario_id=${USUARIO_ID}`);
                 const data = await res.json();
 
+                if(!res.ok) throw new Error(data.detail || "Erro ao carregar dados do banco de dados.");
+
                 saldoAtual = data.saldo;
                 document.getElementById('nomeUsuario').innerText = data.nome_usuario;
                 document.getElementById('saldoAtual').innerText = parseFloat(saldoAtual).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -321,7 +310,6 @@
 
                 desenharGrafico(data.ativos);
 
-                // Ticker Topo
                 const ticker = document.getElementById('topoTicker');
                 ticker.innerHTML = '';
                 const todosIndicadores = [...data.indicadores.cripto, ...data.indicadores.commodities, ...data.indicadores.acoes_imoveis];
@@ -330,14 +318,12 @@
                     ticker.innerHTML += `<span class="mx-5 tracking-wide">${ind.simbolo}: <span class="text-white">$${ind.valor.toLocaleString('en-US', {minimumFractionDigits: 2})}</span> <span class="${cor} text-[9px] ml-1.5 bg-white/5 border border-white/5 px-1.5 py-0.5 rounded-md">${ind.variacao}</span></span> • `;
                 });
 
-                // Lista Macroeconomia
                 const listaMacro = document.getElementById('listaMacro');
                 listaMacro.innerHTML = '';
                 data.indicadores.moedas_taxas.forEach(taxa => {
                     listaMacro.innerHTML += `<div class="flex justify-between items-center bg-slate-800/30 hover:bg-slate-800/50 transition-colors p-2.5 rounded-xl border border-slate-700/30"><span class="text-slate-400 font-medium text-xs">${taxa.simbolo}</span><span class="text-white font-bold text-sm">${taxa.valor.toLocaleString('pt-BR')}</span></div>`;
                 });
 
-                // Lista de Ativos
                 const listaAtivos = document.getElementById('listaAtivos');
                 listaAtivos.innerHTML = '';
                 if (data.ativos.length === 0) {
@@ -355,7 +341,6 @@
                     });
                 }
 
-                // Lista de Transações
                 const listaTransacoes = document.getElementById('listaTransacoes');
                 listaTransacoes.innerHTML = '';
                 if (data.transacoes.length === 0) {
@@ -382,7 +367,6 @@
                     });
                 }
 
-                // Live News (Radar)
                 const listaRadar = document.getElementById('listaRadar');
                 listaRadar.innerHTML = '';
                 data.feed_ao_vivo.forEach(item => {
@@ -393,14 +377,27 @@
                         </div>`;
                 });
 
-            } catch (error) { console.error(error); }
+            } catch (error) { 
+                console.error("Erro na API:", error); 
+                document.getElementById('listaRadar').innerHTML = `<p class="text-xs text-rose-400 text-center mt-5">Erro ao comunicar com o servidor.</p>`;
+            }
         }
 
         async function realizarDeposito() {
             let valor = prompt("Valor do Aporte Institucional (BRL):", "25000");
             if (valor && !isNaN(valor)) {
-                await fetch(`${API_URL}/depositar?usuario_id=${USUARIO_ID}&valor=${valor}`, { method: 'POST' });
-                atualizarPainel();
+                try {
+                    const res = await fetch(`${API_URL}/depositar?usuario_id=${USUARIO_ID}&valor=${valor}`, { method: 'POST' });
+                    const data = await res.json();
+                    if(res.ok) {
+                        atualizarPainel();
+                        alert(`✅ Sucesso: ${data.mensagem}`);
+                    } else {
+                        alert(`❌ Erro no Servidor: ${data.detail}`);
+                    }
+                } catch (error) {
+                    alert("Falha de rede ao tentar depositar.");
+                }
             }
         }
 
@@ -420,8 +417,16 @@
         async function executarOrdem(ativo, acao, valor = 1000.0) {
             try {
                 const res = await fetch(`${API_URL}/executar-ordem?usuario_id=${USUARIO_ID}&ativo=${ativo}&acao=${acao}&valor_investido=${valor}`, { method: 'POST' });
-                if (res.ok) { atualizarPainel(); } else { alert("Ação Recusada: Verifique seu Saldo e Ativos."); }
-            } catch (error) { alert("Falha na execução da ordem."); }
+                const data = await res.json();
+                if (res.ok) { 
+                    atualizarPainel(); 
+                    alert(`✅ ORDEM EXECUTADA: ${data.mensagem}`);
+                } else { 
+                    alert(`❌ AÇÃO RECUSADA: ${data.detail}`); 
+                }
+            } catch (error) { 
+                alert("Falha de rede na execução da ordem."); 
+            }
         }
 
         async function solicitarAnalise() {
@@ -450,7 +455,7 @@
                     let bgBadge = sugestao.decisao === 'COMPRAR' ? 'bg-emerald-500/10' : 'bg-rose-500/10';
                     
                     painel.innerHTML = `
-                        <div class="bg-[#0b1120] p-5 rounded-2xl border ${corBorder} shadow-lg flex flex-col items-start gap-1 relative overflow-hidden">
+                        <div class="bg-[#0b1120] p-5 rounded-2xl border ${corBorder} shadow-lg flex flex-col items-start gap-1 relative overflow-hidden mt-4">
                             <div class="absolute right-0 top-0 w-20 h-20 bg-emerald-500/5 rounded-bl-full pointer-events-none"></div>
                             <div class="flex flex-wrap gap-2 mb-2 z-10">
                                 <span class="text-[9px] font-black text-slate-300 uppercase bg-slate-800 px-2.5 py-1 rounded-md tracking-widest border border-slate-700">Auto-Executado</span>
@@ -461,10 +466,10 @@
                         </div>
                     `;
                 } else {
-                    painel.innerHTML = `<div class="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl text-amber-400 text-xs font-medium text-center">Mercado volátil. A IA optou por preservar capital no momento.</div>`;
+                    painel.innerHTML = `<div class="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl text-amber-400 text-xs font-medium text-center mt-4">Mercado volátil. A IA optou por preservar capital no momento.</div>`;
                 }
             } catch (error) {
-                painel.innerHTML = `<div class="bg-rose-500/10 border border-rose-500/30 p-4 rounded-xl text-rose-400 text-xs font-medium text-center">Falha de conexão com os servidores da IA.</div>`;
+                painel.innerHTML = `<div class="bg-rose-500/10 border border-rose-500/30 p-4 rounded-xl text-rose-400 text-xs font-medium text-center mt-4">Falha de conexão com a IA.</div>`;
             }
             
             btn.innerHTML = `<svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Executar Auto-Trade`;
